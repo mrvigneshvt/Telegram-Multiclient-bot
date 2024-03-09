@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 // Connection URI
 const uri = "mongodb+srv://sodha123:sodha123@cluster0.ncclx8i.mongodb.net/?retryWrites=true&w=majority";
 
-codeRed(uri)
+//codeRed(uri)
 async function codeRed(uri: string) {
     try {
         const connection = mongoose.createConnection(uri);
