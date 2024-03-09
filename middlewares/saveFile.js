@@ -30,4 +30,24 @@ const saveFile = (file, caption, name, done, skip) => __awaiter(void 0, void 0, 
         console.log(err);
     }
 });
-export default saveFile;
+const fileSave = (file, caption, name) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const file_name = file.fileName.replace(/[_\-\.+]/g, ' ');
+        const media = {
+            fileName: file_name,
+            fileSize: file.fileSize,
+            fileId: file.fileId,
+            fileUniqueId: file.fileUniqueId,
+            fileType: file.fileType,
+            mimeType: file.mimeType,
+            caption: caption,
+        };
+        const db = yield name.create(media);
+        console.log(db);
+        console.log('saved in db');
+    }
+    catch (err) {
+        console.log(err);
+    }
+});
+export { saveFile, fileSave };

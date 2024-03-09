@@ -7,7 +7,8 @@ import connectDB from "./dataBase/mongoDB.js"
 import logger from "./middlewares/logger.js"
 import quickConnect from "./middlewares/botConnect.js"
 import storeData from "./middlewares/localStore.js"
-import {multi,childGenerator,dataArray, connectChild} from './multiClient.js'
+import { multi, childGenerator, dataArray, connectChild, deleteNupdate, syncData, dataReload } from './multiClient.js'
+import codeRed from "./codeRed.js"
 /*
 const connectDB = require("./dataBase/mongoDB.js")
 const { ClientData } = require("./dataBase/UserBase.js")
@@ -17,17 +18,17 @@ const { starter } = require("./middlewares/starter")
 const storeData = require("./middlewares/localStore")
 const logger = require('./middlewares/logger')
 */
-const mongoURI ="mongodb+srv://thevixyz:admin@MachiX.thsc7w6.mongodb.net/"
-const apiID: number= 29033643
+const mongoURI = "mongodb+srv://thevixyz:admin@MachiX.thsc7w6.mongodb.net/"
+const apiID: number = 29033643
 const apiHash: string = "a8cc5f16eddd5e0083b2534ecd31123c"
 const fatherToken = "6838759820:AAFY4EB3NXVhrtpKHpttld1N0Reh7FGcppU"
 
-let fatherBot = new Client(new StorageLocalStorage('father'),apiID,apiHash)
+let fatherBot = new Client(new StorageLocalStorage('father'), apiID, apiHash)
 
 father()
 
-async function father(){
-    try{
+async function father() {
+    try {
         console.log(chalk.yellow('Connecting to DataBase..'))
         await connectDB(mongoURI)
         console.log(chalk.green('Connected to DB Success..'))
@@ -37,20 +38,21 @@ async function father(){
         console.log(chalk.yellow('Connecting to Childs....'))
         await multi()
     }
-    catch(err){
+    catch (err) {
         await father()
         console.log(err)
-        await logger('Start father',err)
+        await logger('Start father', err)
 
     }
 }
 
-fatherBot.command('start', async (ctx:any) => {
+fatherBot.command('start', async (ctx: any) => {
     try {
         const chatid = ctx.message.chat.id;
 
         await ctx.reply(`Welcome ${ctx.message.chat.firstName}\n\nThis a MultiClient bot of @MrMachiXbot.\n\nJust Add ur token with mongoDb\n\nTo Start your Own bot\n\nPlug n Play ⚡`)
 
+        console.log(dataArray)
         const isExist = await ClientData.findOne({ Admin: chatid })
 
         if (!isExist) {
@@ -63,12 +65,16 @@ fatherBot.command('start', async (ctx:any) => {
     }
 })
 
-fatherBot.command('deletemyid', async (ctx) => {
+fatherBot.command('deletemyid', async (ctx: any) => {
     try {
         const chatid = ctx.message.chat.id;
         const checkExist = await ClientData.findOneAndDelete({ Admin: chatid })
 
         if (checkExist) {
+            console.log(checkExist)
+            await codeRed(checkExist.MongoDB[0])
+            await deleteNupdate(chatid)
+
             return ctx.reply('deleted successfully')
         } else {
             return ctx.reply('no datas of u')
@@ -98,15 +104,15 @@ fatherBot.command('token', async (ctx) => {
             return ctx.reply('someone is already using this token!')
         }
 
-        const botid:any = (token.substring(0, 10))
+        const botid: any = (token.substring(0, 10))
         console.log(botid)
         const checkExist = await ClientData.findOne({ Admin: chatid })
 
-        
+
         if (checkExist) {
-            if(checkExist.isVerified){
+            if (checkExist.isVerified) {
                 return ctx.reply('Sorry U Cant Change Contact Admin..')
-            }else{
+            } else {
                 const botAuth = await quickConnect(token, ctx, chatid, botid)
             }
         } else {
@@ -119,29 +125,36 @@ fatherBot.command('token', async (ctx) => {
 })
 
 
-fatherBot.command('myInfo', async (ctx:any) => {
+fatherBot.command('myInfo', async (ctx: any) => {
     try {
         const chatid = ctx.message.chat.id;
-        const details = ctx.message.chat
-        console.log(chatid)
-        const checkData = await ClientData.findOne({ Admin: chatid })
+        const details = ctx.message.chat;
+        console.log(chatid);
+        const checkData = await ClientData.findOne({ Admin: chatid });
         if (checkData) {
-            if(details.firstName){
-                let userDatas = `Name: ${ctx.message.chat.firstName}\n\nBotID: ${checkData.BotId}\n\nButtons: ${checkData.Buttons}\n\nMongoDB: ${checkData.MongoDB}\n\nChannelDB: ${checkData.Channels}`
-                return ctx.reply(userDatas)
-            }else{
-                return ctx.reply('setup a firsname')
+            console.log(checkData.Channels)
+            if (details.firstName) {
+                // Format the Channels array
+                const channelsFormatted = checkData.Channels.map((channel, index) => {
+                    return `${index}) ${channel}`;
+                }).join('\n');
+
+                let userDatas = `Name: ${ctx.message.chat.firstName}\n\nBotID: ${checkData.BotId}\n\nButtons: ${checkData.Buttons}\n\nMongoDB: ${checkData.MongoDB}\n\nChannels:\n${channelsFormatted}\n\nVerified: ${checkData.isVerified}`;
+                return ctx.reply(userDatas);
+            } else {
+                return ctx.reply('Setup a first name');
             }
         } else {
-            return ctx.reply('click /start and then check')
+            return ctx.reply('Click /start and then check');
         }
     } catch (err) {
-        await logger("Show Client Info", err)
-        console.log(err)
+        await logger("Show Client Info", err);
+        console.log(err);
     }
-})
+});
 
-fatherBot.command('buttons', async (ctx:any) => {
+
+fatherBot.command('buttons', async (ctx: any) => {
     try {
         const text = ctx.message.text
         const chatid = ctx.message.chat.id;
@@ -156,7 +169,6 @@ fatherBot.command('buttons', async (ctx:any) => {
             } else {
                 const buttons = text.replace('/buttons ', '')
                 const splitButtons = buttons.split('-')
-                console.log(splitButtons)
 
                 if (splitButtons.length > 4) {
                     return ctx.reply('only 4 buttons allowed')
@@ -172,9 +184,15 @@ fatherBot.command('buttons', async (ctx:any) => {
                     }, { new: true })
 
                     if (data) {
+                        console.log(dataArray)
+                        await dataReload()
+                        console.log(dataArray)
                         await ctx.reply(sendButtons, 'updated')
-                        const datas = dataArray.find((item:any)=>item.client.Admin == chatid)
-                        datas.client.Buttons = splitButtons 
+                        if (dataArray.find((item: any) => item.client.Admin == chatid)) {
+                            const datas = dataArray.find((item: any) => item.client.Admin == chatid)
+                            console.log('dataaas', datas)
+                            datas.client.Buttons = splitButtons
+                        }
 
                     } else {
                         ctx.reply('try /start and do again')
@@ -185,14 +203,14 @@ fatherBot.command('buttons', async (ctx:any) => {
             return ctx.reply('First Fill the Token!')
         }
 
-    } catch (err:any) {
+    } catch (err: any) {
         await logger("Set Client Buttons", err)
         console.log(err)
         return ctx.reply(err.message)
     }
 })
 
-fatherBot.command('mongoose', async (ctx:any) => {
+fatherBot.command('mongoose', async (ctx: any) => {
     try {
         const text = ctx.message.text
         const chatid = ctx.message.chat.id;
@@ -225,7 +243,7 @@ fatherBot.command('mongoose', async (ctx:any) => {
     }
 })
 
-fatherBot.on('callbackQuery', async (ctx:any) => {
+fatherBot.on('callbackQuery', async (ctx: any) => {
     const data = ctx.callbackQuery.data;
     const msg = ctx.callbackQuery.message.text;
     let userId = msg.split("\n")[2].split(" ")[1]
@@ -233,8 +251,8 @@ fatherBot.on('callbackQuery', async (ctx:any) => {
 
     if (data.startsWith("approve")) {
         try {
-            
 
+            console.log(userId)
             console.log(data, uri, userId)
 
             const verify = await ClientData.findOneAndUpdate({ Admin: parseInt(userId) }, {
@@ -245,8 +263,10 @@ fatherBot.on('callbackQuery', async (ctx:any) => {
             }, { new: true })
 
             if (verify) {
+                console.log('verify' + verify)
                 console.log('done.. creatiing in db..')
                 await connectChild(Number(userId))
+                await ctx.client.sendMessage(verify.Admin, 'Verified use your bot..')
             } else {
                 await ctx.reply("ClientData not Found")
             }

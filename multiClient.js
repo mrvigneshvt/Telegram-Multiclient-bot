@@ -22,8 +22,9 @@ import storeData from "./middlewares/localStore.js";
 import { schemaFile, userSchema } from "./dataBase/fileModel.js";
 import InlineKeyboard from "./middlewares/inlineKeyboard.js";
 import { ClientData } from "./dataBase/UserBase.js";
-import saveFile from "./middlewares/saveFile.js";
+import { saveFile, fileSave } from "./middlewares/saveFile.js";
 import logger from "./middlewares/logger.js";
+import deleteAllCollections from "./middlewares/deleteAll.js";
 let childBot = new Composer();
 const Admin = [1345158291, 1767901454];
 const apiID = 29033643;
@@ -41,7 +42,24 @@ function multi() {
         }
         catch (err) {
             console.log(chalk.red('Error in multi function:', err));
+            logger('Multi child', err);
         }
+    });
+}
+function dataReload() {
+    return __awaiter(this, void 0, void 0, function* () {
+        dataArray = yield storeData();
+        dataArray.forEach((element) => {
+            const connection = mongoose.createConnection(element.client.MongoDB[0]);
+            let indexArr = [];
+            for (let i = 0; i < 4; i++) {
+                const btnModel = connection.model(`${i} buttons`, schemaFile);
+                indexArr.push(btnModel);
+            }
+            element.client.indexBtn = indexArr;
+            element.client.users = connection.model('users', userSchema);
+            console.log('data updated');
+        });
     });
 }
 function connectChild(userId) {
@@ -51,18 +69,22 @@ function connectChild(userId) {
             console.log('stored in storeData');
             const content = dataArray.find((item) => item.client.Admin == userId);
             let indexArr = [];
-            const connection = mongoose.createConnection(content.client.MongoDB);
-            for (let i = 0; i < content.client.Buttons.length; i++) {
+            const connection = mongoose.createConnection(content.client.MongoDB[0]);
+            for (let i = 0; i < 4; i++) {
                 const btnModel = connection.model(`${i} buttons`, schemaFile);
                 indexArr.push(btnModel);
             }
+            content.client.users = connection.model('users', userSchema);
+            content.client.indexBtn = indexArr;
+            console.log('stored necessary database config');
             const client = new Client(new StorageLocalStorage(String(`Client${userId}`)), apiID, apiHash);
             yield client.start(content.client.Token);
             client.use(childBot);
-            console.log();
+            console.log('client initialized sucess..');
         }
         catch (err) {
             console.log(chalk.red('Error in connectChild function:', err));
+            logger('connect child', err);
         }
     });
 }
@@ -73,7 +95,7 @@ function childGenerator(i, dataArray, childBot) {
             const connection = mongoose.createConnection(dataArray[i].client.MongoDB[0]);
             let indexArr = [];
             for (let j = 0; j < 4; j++) {
-                const btnModel = connection.model(`${i} buttons`, schemaFile);
+                const btnModel = connection.model(`${j} buttons`, schemaFile);
                 indexArr.push(btnModel);
             }
             dataArray[i].client.indexBtn = indexArr;
@@ -86,6 +108,7 @@ function childGenerator(i, dataArray, childBot) {
             console.log(dataArray);
         }
         catch (err) {
+            logger('Multi child', err);
             console.log(chalk.red('Error in childGenerator function:', err));
         }
     });
@@ -118,7 +141,8 @@ childBot.command('start', (ctx) => __awaiter(void 0, void 0, void 0, function* (
             });
             console.log('created');
         }
-        if (foundClient.client.Thumbnail.length < 6 || foundClient.client.Buttons.length < 1) {
+        console.log(dataArray);
+        if (!foundClient.client.Thumbnail || foundClient.client.Buttons.length < 1) {
             yield ctx.reply('this bot hasnt been started\n\n- By the Admin');
         }
         else {
@@ -134,10 +158,21 @@ childBot.command('start', (ctx) => __awaiter(void 0, void 0, void 0, function* (
         console.log(chalk.red('Error in start command handler:', error));
     }
 }));
+childBot.on('message:document', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        console.log(ctx);
+        const chatid = ctx.message.chat.id;
+        yield ctx.replyDocument(ctx.message.document.fileId);
+    }
+    catch (error) {
+        console.log(error);
+    }
+}));
 childBot.command('info', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     const userName = ctx.message.chat.firstName;
     const chatid = ctx.message.chat.id;
     const botID = ctx.me.id;
+    //await ctx.client.sendDocument(chatid, 'BQACAgQAAx0CfNMtFQADfGXkvSywWGRiesHpT31tlsyC0pTBAAI8CAACTCqJCgABfa2k8hzpqR4AAwQAAx4E')
     const found = dataArray.find((item) => item.client.BotId == botID);
     const getUserModel = yield found.client.users.findOne({ chatId: chatid });
     if (getUserModel) {
@@ -259,6 +294,102 @@ childBot.command('index', (ctx) => __awaiter(void 0, void 0, void 0, function* (
         console.log(err);
     }
 }));
+childBot.command('unLink', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    const text = ctx.message.text;
+    const chatid = ctx.message.chat.id;
+    const botID = ctx.me.id;
+    const data = dataArray.find((item) => item.client.Admin == chatid);
+    const update = yield ClientData.findOneAndUpdate({ BotId: botID }, {
+        $set: {
+            Channels: [0, 0, 0, 0]
+        }
+    }, { new: true });
+    console.log(update);
+    yield dataReload();
+    yield ctx.reply('Done.. Unlinked from All Channels');
+}));
+childBot.on('inlineQuery', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        console.log(ctx);
+        const botName = ctx.me.username;
+        const botID = ctx.me.id;
+        //const inlineID = ctx.inlineQuery.id;
+        const found = dataArray.find((item) => item.client.BotId == botID);
+        const offset = parseInt(ctx.inlineQuery.offset) || 0; // Parse offset to integer
+        let query = ctx.inlineQuery.query;
+        let number = parseInt(query[0]); // Parse number to integer
+        let filename = query.slice(1).trim(); // Remove number from the query and trim whitespace .find().sort({_id: -1}).limit(10);
+        if (number <= found.client.Buttons.length - 1) {
+            let searchFile = yield found.client.indexBtn[number].find({ fileName: { $regex: filename, $options: 'i' } }).sort({ _id: -1 }).skip(offset).limit(10); // Use offset to paginate results
+            console.log(searchFile);
+            if (searchFile.length > 0) {
+                const results = searchFile.map((file, index) => ({
+                    id: crypto.randomUUID(),
+                    type: "document",
+                    documentFileId: file.fileId,
+                    title: file.fileName,
+                    description: `size : ${Math.floor(file.fileSize / (1024 * 1024))} MB`,
+                }));
+                /* const resultContent = searchFile.map((file: any) => {
+                   type: 'article',
+                     id: '1',
+                       title: 'Your Name Here', // Change this to the name you want to display
+                         input_message_content: {
+                     message_text: 'Message content here'
+                   },
+                   reply_markup: Markup.inlineKeyboard([
+                     Markup.urlButton('getFile', getFileLink)
+                   ]).extra()
+                 })
+         */
+                yield ctx.answerInlineQuery(results, {
+                    cacheTime: 0, button: {
+                        text: " 📂 Results: Swipe Up ⬆️", startParameter: "start"
+                    }, nextOffset: (offset + 10).toString()
+                }); // Update nextOffset to paginate
+            }
+            else {
+                yield ctx.answerInlineQuery([{
+                        type: "article",
+                        id: crypto.randomUUID(),
+                        title: "No File Found",
+                        description: '\nNo Data',
+                        inputMessageContent: {
+                            messageText: "No results found in database.\n\nCheck the spelling of the file.\n\nOr the file hasn't been uploaded to the database."
+                        }
+                    }], { cacheTime: 0 });
+            }
+        }
+        else {
+            yield ctx.answerInlineQuery([{
+                    type: "article",
+                    id: crypto.randomUUID(),
+                    title: "Button not Valid",
+                    description: '\nEnter Correct Button Number',
+                    inputMessageContent: {
+                        messageText: "Button not valid!!\n\n=> Click Start.\n\n=> Choose the Required Button"
+                    }
+                }], { cacheTime: 0 });
+        }
+    }
+    catch (err) {
+        console.error(err);
+        logger('inLine', err);
+        console.log('error in Inline');
+    }
+}));
+childBot.command('admin', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    const text = ctx.message.text;
+    const botID = ctx.me.id;
+    const chatid = ctx.message.chat.id;
+    const find = yield ClientData.findOne({ BotId: botID });
+    if (!find || !checkSudo(find.Admin, chatid)) {
+        return;
+    }
+    const datas = dataArray.find((item) => item.client.BotId == botID);
+    const count = yield datas.client.users.countDocuments({});
+    yield ctx.reply(`Total Users: ${count}`);
+}));
 function iterMessage(total, FileArr, done, ctx, idChannel, startFrom, chatid, modifyID, indexBtn, skip) {
     var _a, e_1, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
@@ -311,7 +442,7 @@ function iterMessage(total, FileArr, done, ctx, idChannel, startFrom, chatid, mo
                 total.value += 20;
                 setTimeout(() => __awaiter(this, void 0, void 0, function* () {
                     yield iterMessage(total, FileArr, done, ctx, idChannel, finishTo - 1, chatid, modifyID, indexBtn, skip);
-                }), 100000);
+                }), 59000);
             }
             else {
                 FileArr = [];
@@ -323,4 +454,92 @@ function iterMessage(total, FileArr, done, ctx, idChannel, startFrom, chatid, mo
         }
     });
 }
-export { multi, childGenerator, dataArray, connectChild };
+childBot.command('link', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    const text = ctx.message.text;
+    const chatid = ctx.message.chat.id;
+    const botID = ctx.me.id;
+    const find = dataArray.find((item) => item.client.BotId == botID);
+    if (!find || !checkSudo(find.client.Admin, chatid)) {
+        return;
+    }
+    if (text == '/link') {
+        console.log(dataArray);
+        return ctx.reply('Please use this format \n\n/link NuMbErButton');
+    }
+    const ChannelId = ctx.message.replyToMessage && ctx.message.replyToMessage.forwardFromChat
+        ? ctx.message.replyToMessage.forwardFromChat.id
+        : null;
+    const number = parseInt(text.match(/\d+/)[0]);
+    if (number > find.client.Buttons.length - 1) {
+        return ctx.reply('number is invalid..');
+    }
+    else {
+        try {
+            const channelName = ctx.msg.replyToMessage.forwardFromChat.title;
+            console.log(ctx);
+            console.log(channelName, ChannelId, number, text);
+            yield ctx.client.sendMessage(ChannelId, "Connected to Bot");
+            console.log(ctx);
+            let channel = yield ClientData.findOneAndUpdate({ BotId: botID }, {
+                $push: {
+                    Channels: {
+                        $each: [ChannelId],
+                        $position: Number(number)
+                    }
+                }
+            }, { new: true });
+            yield dataReload();
+            return ctx.reply('Updated check /myInfo in fatherBot');
+        }
+        catch (err) {
+            console.log(err);
+            return ctx.reply('Set Bot as ADMIN in the channel');
+        }
+    }
+}));
+childBot.command('sudokillme', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    yield ctx.reply('shutting down....');
+    yield ctx.client.disconnect();
+}));
+childBot.on('message:document', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    //console.log(ctx)
+    try {
+        const chatid = ctx.message.chat.id;
+        const botID = ctx.me.id;
+        if (ctx.message.chat.type == 'channel') {
+            const find = dataArray.find((item) => item.client.BotId == botID);
+            console.log('find is', find);
+            const channels = find.client.Channels;
+            console.log('channelsis', channels);
+            console.log('chatid', chatid, 'channelid', channels);
+            const ifExist = channels.findIndex((channel) => chatid == channel);
+            console.log(ifExist);
+            if (ifExist >= 0) {
+                console.log(find.client.indexBtn);
+                yield fileSave(ctx.msg.document, ctx.msg.caption, find.client.indexBtn[ifExist]);
+            }
+            else {
+                console.log('dont know');
+            }
+        }
+    }
+    catch (error) {
+        console.log(error);
+        logger('eror in savingFile', error);
+    }
+}));
+function deleteNupdate(chatid) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const delteUser = dataArray.find((item) => item.client.admin == chatid);
+        yield deleteAllCollections(delteUser.client.MongoDB[0]);
+        dataArray = yield storeData();
+        console.log('updated dataArray due to delete');
+        console.log(dataArray);
+    });
+}
+function syncData() {
+    return __awaiter(this, void 0, void 0, function* () {
+        dataArray = yield storeData();
+    });
+}
+export { multi, childGenerator, dataArray, connectChild, deleteNupdate, syncData, dataReload };

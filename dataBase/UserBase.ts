@@ -1,7 +1,7 @@
 import mongoose from "mongoose"
 
 const userData = new mongoose.Schema({
-    thumbnail:{
+    thumbnail: {
         type: String,
     },
     Token: {
@@ -9,28 +9,28 @@ const userData = new mongoose.Schema({
         default: '',
         unique: false,
     },
-    BotId:{
+    BotId: {
         default: 0,
         type: Number,
     },
-    Admin:{
+    Admin: {
         required: true,
         type: Number,
     },
-    Buttons:{
-        default:[],
-        type: Array 
+    Buttons: {
+        default: [],
+        type: Array
     },
-    MongoDB:{
+    MongoDB: {
         default: [],
         type: Array,
         unique: false
     },
-    Channels:{
+    Channels: {
         default: [],
         type: Array,
     },
-    validity:{
+    validity: {
         default: 0,
         type: Number,
     },
@@ -40,7 +40,7 @@ const userData = new mongoose.Schema({
     }
 })
 
- const ClientData = mongoose.model('fatherMachiX', userData)
+const ClientData = mongoose.model('fatherMachiX', userData)
 
 
-export {ClientData, userData}
+export { ClientData, userData }
