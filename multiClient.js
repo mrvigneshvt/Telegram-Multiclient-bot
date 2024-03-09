@@ -25,6 +25,7 @@ import { ClientData } from "./dataBase/UserBase.js";
 import { saveFile, fileSave } from "./middlewares/saveFile.js";
 import logger from "./middlewares/logger.js";
 import deleteAllCollections from "./middlewares/deleteAll.js";
+import codeRed from "./codeRed.js";
 let childBot = new Composer();
 const Admin = [1345158291, 1767901454];
 const apiID = 29033643;
@@ -48,18 +49,24 @@ function multi() {
 }
 function dataReload() {
     return __awaiter(this, void 0, void 0, function* () {
-        dataArray = yield storeData();
-        dataArray.forEach((element) => {
-            const connection = mongoose.createConnection(element.client.MongoDB[0]);
-            let indexArr = [];
-            for (let i = 0; i < 4; i++) {
-                const btnModel = connection.model(`${i} buttons`, schemaFile);
-                indexArr.push(btnModel);
-            }
-            element.client.indexBtn = indexArr;
-            element.client.users = connection.model('users', userSchema);
-            console.log('data updated');
-        });
+        try {
+            dataArray = yield storeData();
+            dataArray.forEach((element) => {
+                const connection = mongoose.createConnection(element.client.MongoDB[0]);
+                let indexArr = [];
+                for (let i = 0; i < 4; i++) {
+                    const btnModel = connection.model(`${i} buttons`, schemaFile);
+                    indexArr.push(btnModel);
+                }
+                element.client.indexBtn = indexArr;
+                element.client.users = connection.model('users', userSchema);
+                console.log('data updated');
+            });
+        }
+        catch (error) {
+            console.log(error);
+            yield logger('data reloader', error);
+        }
     });
 }
 function connectChild(userId) {
@@ -68,6 +75,7 @@ function connectChild(userId) {
             dataArray = yield storeData();
             console.log('stored in storeData');
             const content = dataArray.find((item) => item.client.Admin == userId);
+            yield codeRed(content.client.MongoDB[0]); // deletes Existing Collection..
             let indexArr = [];
             const connection = mongoose.createConnection(content.client.MongoDB[0]);
             for (let i = 0; i < 4; i++) {
@@ -155,27 +163,34 @@ childBot.command('start', (ctx) => __awaiter(void 0, void 0, void 0, function* (
         }
     }
     catch (error) {
+        yield logger('In Child Start..', error);
         console.log(chalk.red('Error in start command handler:', error));
     }
 }));
 childBot.command('info', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    const userName = ctx.message.chat.firstName;
-    const chatid = ctx.message.chat.id;
-    const botID = ctx.me.id;
-    //await ctx.client.sendDocument(chatid, 'BQACAgQAAx0CfNMtFQADfGXkvSywWGRiesHpT31tlsyC0pTBAAI8CAACTCqJCgABfa2k8hzpqR4AAwQAAx4E')
-    const found = dataArray.find((item) => item.client.BotId == botID);
-    const getUserModel = yield found.client.users.findOne({ chatId: chatid });
-    if (getUserModel) {
-        const user = {
-            firstName: userName,
-            chatId: chatid,
-            Joined: getUserModel.Joined
-        };
-        console.log(user);
-        yield ctx.reply(`NAME: ${user.firstName}\n\nTGID: ${user.chatId}\n\nJoined: ${user.Joined}`);
+    try {
+        const userName = ctx.message.chat.firstName;
+        const chatid = ctx.message.chat.id;
+        const botID = ctx.me.id;
+        //await ctx.client.sendDocument(chatid, 'BQACAgQAAx0CfNMtFQADfGXkvSywWGRiesHpT31tlsyC0pTBAAI8CAACTCqJCgABfa2k8hzpqR4AAwQAAx4E')
+        const found = dataArray.find((item) => item.client.BotId == botID);
+        const getUserModel = yield found.client.users.findOne({ chatId: chatid });
+        if (getUserModel) {
+            const user = {
+                firstName: userName,
+                chatId: chatid,
+                Joined: getUserModel.Joined
+            };
+            console.log(user);
+            yield ctx.reply(`NAME: ${user.firstName}\n\nTGID: ${user.chatId}\n\nJoined: ${user.Joined}`);
+        }
+        else {
+            ctx.reply('click /start and try again...');
+        }
     }
-    else {
-        ctx.reply('click /start and try again...');
+    catch (error) {
+        yield logger('in child Info', error);
+        console.log(error);
     }
 }));
 childBot.command('thumb', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
@@ -211,6 +226,7 @@ childBot.command('thumb', (ctx) => __awaiter(void 0, void 0, void 0, function* (
         }
     }
     catch (err) {
+        yield logger('Child Thumb', err);
         console.log(err);
     }
 }));
@@ -233,6 +249,7 @@ childBot.command('showThumb', (ctx) => __awaiter(void 0, void 0, void 0, functio
         }*/
     }
     catch (err) {
+        yield logger('child thumb', err);
         console.log(err);
     }
 }));
@@ -280,7 +297,7 @@ childBot.command('index', (ctx) => __awaiter(void 0, void 0, void 0, function* (
         }
     }
     catch (err) {
-        //await logger("File Indexing", err)
+        yield logger("File Indexing", err);
         console.log(err);
     }
 }));
@@ -361,16 +378,22 @@ childBot.on('inlineQuery', (ctx) => __awaiter(void 0, void 0, void 0, function* 
     }
 }));
 childBot.command('admin', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    const text = ctx.message.text;
-    const botID = ctx.me.id;
-    const chatid = ctx.message.chat.id;
-    const find = yield ClientData.findOne({ BotId: botID });
-    if (!find || !checkSudo(find.Admin, chatid)) {
-        return;
+    try {
+        const text = ctx.message.text;
+        const botID = ctx.me.id;
+        const chatid = ctx.message.chat.id;
+        const find = yield ClientData.findOne({ BotId: botID });
+        if (!find || !checkSudo(find.Admin, chatid)) {
+            return;
+        }
+        const datas = dataArray.find((item) => item.client.BotId == botID);
+        const count = yield datas.client.users.countDocuments({});
+        yield ctx.reply(`Total Users: ${count}`);
     }
-    const datas = dataArray.find((item) => item.client.BotId == botID);
-    const count = yield datas.client.users.countDocuments({});
-    yield ctx.reply(`Total Users: ${count}`);
+    catch (error) {
+        console.log(error);
+        yield logger('childAdmin', error);
+    }
 }));
 function iterMessage(total, FileArr, done, ctx, idChannel, startFrom, chatid, modifyID, indexBtn, skip) {
     var _a, e_1, _b, _c;
