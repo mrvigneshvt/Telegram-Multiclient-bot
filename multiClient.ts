@@ -157,20 +157,6 @@ childBot.command('start', async (ctx: any) => {
 });
 
 
-
-
-childBot.on('message:document', async (ctx) => {
-  try {
-    console.log(ctx)
-    const chatid = ctx.message.chat.id;
-
-    await ctx.replyDocument(ctx.message.document.fileId)
-  } catch (error) {
-    console.log(error)
-  }
-
-})
-
 childBot.command('info', async (ctx: any) => {
 
   const userName: string = ctx.message.chat.firstName;
@@ -368,21 +354,12 @@ childBot.on('inlineQuery', async (ctx: any) => {
           type: "document",
           documentFileId: file.fileId,
           title: file.fileName,
-          description: `size : ${Math.floor(file.fileSize / (1024 * 1024))} MB`,
+          description: `Size : ${Math.floor(file.fileSize / (1024 * 1024))} MB\nType: ${file.mimeType}`,
+          caption: file.caption,
+          replyMarkup: {
+            inlineKeyboard: [[{ text: "Search Again", switchInlineQueryCurrentChat: query }]]
+          }
         }));
-
-        /* const resultContent = searchFile.map((file: any) => {
-           type: 'article',
-             id: '1',
-               title: 'Your Name Here', // Change this to the name you want to display
-                 input_message_content: {
-             message_text: 'Message content here'
-           },
-           reply_markup: Markup.inlineKeyboard([
-             Markup.urlButton('getFile', getFileLink)
-           ]).extra()
-         })
- */
 
 
 
