@@ -438,45 +438,42 @@ function iterMessage(total, FileArr, done, ctx, idChannel, startFrom, chatid, mo
 }
 childBot.command('link', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     const text = ctx.message.text;
-    const chatid = ctx.message.chat.id;
+    const chatId = ctx.message.chat.id;
     const botID = ctx.me.id;
     const find = dataArray.find((item) => item.client.BotId == botID);
-    if (!find || !checkSudo(find.client.Admin, chatid)) {
+    if (!find || !checkSudo(find.client.Admin, chatId)) {
         return;
     }
-    if (text == '/link') {
+    if (text === '/link') {
         console.log(dataArray);
-        return ctx.reply('Please use this format \n\n/link NuMbErButton');
+        return ctx.reply('Please use this format: /link [NumberButton]');
     }
     const ChannelId = ctx.message.replyToMessage && ctx.message.replyToMessage.forwardFromChat
         ? ctx.message.replyToMessage.forwardFromChat.id
         : null;
-    const number = parseInt(text.match(/\d+/)[0]);
-    if (number > find.client.Buttons.length - 1) {
-        return ctx.reply('number is invalid..');
+    const numberMatch = text.match(/\d+/);
+    if (!numberMatch) {
+        return ctx.reply('Please provide a valid number.');
     }
-    else {
-        try {
-            const channelName = ctx.msg.replyToMessage.forwardFromChat.title;
-            console.log(ctx);
-            console.log(channelName, ChannelId, number, text);
-            yield ctx.client.sendMessage(ChannelId, "Connected to Bot");
-            console.log(ctx);
-            let channel = yield ClientData.findOneAndUpdate({ BotId: botID }, {
-                $push: {
-                    Channels: {
-                        $each: [ChannelId],
-                        $position: Number(number)
-                    }
-                }
-            }, { new: true });
-            yield dataReload();
-            return ctx.reply('Updated check /myInfo in fatherBot');
+    const number = parseInt(numberMatch[0]);
+    if (number >= find.client.Buttons.length) {
+        return ctx.reply('Number is invalid.');
+    }
+    try {
+        const channelName = ctx.message.replyToMessage.forwardFromChat.title;
+        yield ctx.client.sendMessage(ChannelId, "Connected to Bot");
+        const updatedClientData = yield ClientData.findOne({ BotId: botID });
+        if (!updatedClientData) {
+            return ctx.reply('Bot data not found.');
         }
-        catch (err) {
-            console.log(err);
-            return ctx.reply('Set Bot as ADMIN in the channel');
-        }
+        updatedClientData.Channels.set(number, ChannelId);
+        yield updatedClientData.save();
+        yield dataReload();
+        return ctx.reply('Updated, check /myInfo in fatherBot');
+    }
+    catch (err) {
+        console.error(err);
+        return ctx.reply('Failed to link. Make sure the bot is an ADMIN in the channel.');
     }
 }));
 childBot.command('sudokillme', (ctx) => __awaiter(void 0, void 0, void 0, function* () {

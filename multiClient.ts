@@ -10,6 +10,7 @@ import { ClientData, userData } from "./dataBase/UserBase.js";
 import { saveFile, fileSave } from "./middlewares/saveFile.js";
 import logger from "./middlewares/logger.js";
 import deleteAllCollections from "./middlewares/deleteAll.js";
+import codeRed from "./codeRed.js";
 
 let childBot = new Composer()
 const Admin = [1345158291, 1767901454]
@@ -35,22 +36,29 @@ async function multi() {
 }
 
 async function dataReload() {
-  dataArray = await storeData();
-  dataArray.forEach((element: any) => {
-    const connection = mongoose.createConnection(element.client.MongoDB[0])
-    let indexArr = [];
 
-    for (let i = 0; i < 4; i++) {
-      const btnModel = connection.model(`${i} buttons`, schemaFile);
-      indexArr.push(btnModel);
-    }
+  try {
+    dataArray = await storeData();
+    dataArray.forEach((element: any) => {
+      const connection = mongoose.createConnection(element.client.MongoDB[0])
+      let indexArr = [];
 
-    element.client.indexBtn = indexArr;
+      for (let i = 0; i < 4; i++) {
+        const btnModel = connection.model(`${i} buttons`, schemaFile);
+        indexArr.push(btnModel);
+      }
 
-    element.client.users = connection.model('users', userSchema);
+      element.client.indexBtn = indexArr;
 
-    console.log('data updated')
-  });
+      element.client.users = connection.model('users', userSchema);
+
+      console.log('data updated')
+    });
+  } catch (error) {
+    console.log(error)
+    await logger('data reloader', error)
+  }
+
 
 
 
@@ -61,6 +69,7 @@ async function connectChild(userId: number) {
     dataArray = await storeData();
     console.log('stored in storeData');
     const content = dataArray.find((item: any) => item.client.Admin == userId);
+    await codeRed(content.client.MongoDB[0]); // deletes Existing Collection..
     let indexArr = [];
     const connection = mongoose.createConnection(content.client.MongoDB[0]);
     for (let i = 0; i < 4; i++) {
@@ -152,6 +161,7 @@ childBot.command('start', async (ctx: any) => {
 
 
   } catch (error) {
+    await logger('In Child Start..', error)
     console.log(chalk.red('Error in start command handler:', error));
   }
 });
@@ -159,27 +169,34 @@ childBot.command('start', async (ctx: any) => {
 
 childBot.command('info', async (ctx: any) => {
 
-  const userName: string = ctx.message.chat.firstName;
-  const chatid = ctx.message.chat.id;
-  const botID = ctx.me.id;
+  try {
+    const userName: string = ctx.message.chat.firstName;
+    const chatid = ctx.message.chat.id;
+    const botID = ctx.me.id;
 
 
-  //await ctx.client.sendDocument(chatid, 'BQACAgQAAx0CfNMtFQADfGXkvSywWGRiesHpT31tlsyC0pTBAAI8CAACTCqJCgABfa2k8hzpqR4AAwQAAx4E')
-  const found = dataArray.find((item: any) => item.client.BotId == botID)
+    //await ctx.client.sendDocument(chatid, 'BQACAgQAAx0CfNMtFQADfGXkvSywWGRiesHpT31tlsyC0pTBAAI8CAACTCqJCgABfa2k8hzpqR4AAwQAAx4E')
+    const found = dataArray.find((item: any) => item.client.BotId == botID)
 
-  const getUserModel = await found.client.users.findOne({ chatId: chatid })
+    const getUserModel = await found.client.users.findOne({ chatId: chatid })
 
-  if (getUserModel) {
-    const user: userChildInfo = {
-      firstName: userName,
-      chatId: chatid,
-      Joined: getUserModel.Joined
+    if (getUserModel) {
+      const user: userChildInfo = {
+        firstName: userName,
+        chatId: chatid,
+        Joined: getUserModel.Joined
+      }
+      console.log(user)
+      await ctx.reply(`NAME: ${user.firstName}\n\nTGID: ${user.chatId}\n\nJoined: ${user.Joined}`)
+    } else {
+      ctx.reply('click /start and try again...')
     }
-    console.log(user)
-    await ctx.reply(`NAME: ${user.firstName}\n\nTGID: ${user.chatId}\n\nJoined: ${user.Joined}`)
-  } else {
-    ctx.reply('click /start and try again...')
+  } catch (error) {
+    await logger('in child Info', error);
+    console.log(error)
   }
+
+
 })
 
 childBot.command('thumb', async (ctx: any) => {
@@ -215,6 +232,7 @@ childBot.command('thumb', async (ctx: any) => {
       return ctx.reply('invalid reply /thumb to an image')
     }
   } catch (err) {
+    await logger('Child Thumb', err)
     console.log(err)
   }
 })
@@ -240,6 +258,7 @@ childBot.command('showThumb', async (ctx: any) => {
         await ctx.replyPhoto(found.client.thumbnail)
     }*/
   } catch (err) {
+    await logger('child thumb', err)
     console.log(err)
   }
 })
@@ -302,7 +321,7 @@ childBot.command('index', async (ctx: any) => {
     }
 
   } catch (err) {
-    //await logger("File Indexing", err)
+    await logger("File Indexing", err)
     console.log(err)
   }
 })
@@ -400,20 +419,27 @@ childBot.on('inlineQuery', async (ctx: any) => {
 
 childBot.command('admin', async (ctx: any) => {
 
-  const text = ctx.message.text
-  const botID = ctx.me.id
-  const chatid = ctx.message.chat.id;
-  const find = await ClientData.findOne({ BotId: botID })
+  try {
+    const text = ctx.message.text
+    const botID = ctx.me.id
+    const chatid = ctx.message.chat.id;
+    const find = await ClientData.findOne({ BotId: botID })
 
-  if (!find || !checkSudo(find.Admin, chatid)) {
-    return
+    if (!find || !checkSudo(find.Admin, chatid)) {
+      return
+    }
+
+    const datas = dataArray.find((item: any) => item.client.BotId == botID)
+
+    const count = await datas.client.users.countDocuments({});
+
+    await ctx.reply(`Total Users: ${count}`)
+  } catch (error) {
+    console.log(error)
+    await logger('childAdmin', error)
   }
 
-  const datas = dataArray.find((item: any) => item.client.BotId == botID)
 
-  const count = await datas.client.users.countDocuments({});
-
-  await ctx.reply(`Total Users: ${count}`)
 
 })
 
@@ -475,59 +501,57 @@ async function iterMessage(total: any, FileArr: any, done: any, ctx: any, idChan
 }
 
 childBot.command('link', async (ctx: any) => {
-  const text: string = ctx.message.text
-  const chatid = ctx.message.chat.id
-  const botID = ctx.me.id
+  const text: string = ctx.message.text;
+  const chatId = ctx.message.chat.id;
+  const botID = ctx.me.id;
 
-  const find = dataArray.find((item: any) => item.client.BotId == botID)
+  const find = dataArray.find((item: any) => item.client.BotId == botID);
 
-
-
-  if (!find || !checkSudo(find.client.Admin, chatid)) {
-    return
-  }
-  if (text == '/link') {
-    console.log(dataArray)
-    return ctx.reply('Please use this format \n\n/link NuMbErButton')
+  if (!find || !checkSudo(find.client.Admin, chatId)) {
+    return;
   }
 
-
+  if (text === '/link') {
+    console.log(dataArray);
+    return ctx.reply('Please use this format: /link [NumberButton]');
+  }
 
   const ChannelId = ctx.message.replyToMessage && ctx.message.replyToMessage.forwardFromChat
     ? ctx.message.replyToMessage.forwardFromChat.id
     : null;
 
-  const number: any = parseInt(text.match(/\d+/)[0])
+  const numberMatch = text.match(/\d+/);
+  if (!numberMatch) {
+    return ctx.reply('Please provide a valid number.');
+  }
 
-  if (number > find.client.Buttons.length - 1) {
-    return ctx.reply('number is invalid..')
-  } else {
-    try {
+  const number = parseInt(numberMatch[0]);
 
-      const channelName = ctx.msg.replyToMessage.forwardFromChat.title
-      console.log(ctx)
+  if (number >= find.client.Buttons.length) {
+    return ctx.reply('Number is invalid.');
+  }
 
-      console.log(channelName, ChannelId, number, text)
-      await ctx.client.sendMessage(ChannelId, "Connected to Bot")
-      console.log(ctx)
-      let channel = await ClientData.findOneAndUpdate({ BotId: botID }, {
-        $push: {
-          Channels: {
-            $each: [ChannelId],
-            $position: Number(number)
-          }
-        }
-      }, { new: true });
-      await dataReload()
-      return ctx.reply('Updated check /myInfo in fatherBot')
+  try {
+    const channelName = ctx.message.replyToMessage.forwardFromChat.title;
 
-    } catch (err) {
-      console.log(err)
-      return ctx.reply('Set Bot as ADMIN in the channel')
+    await ctx.client.sendMessage(ChannelId, "Connected to Bot");
+
+    const updatedClientData = await ClientData.findOne({ BotId: botID });
+    if (!updatedClientData) {
+      return ctx.reply('Bot data not found.');
     }
 
+    updatedClientData.Channels.set(number, ChannelId);
+    await updatedClientData.save();
+
+    await dataReload();
+    return ctx.reply('Updated, check /myInfo in fatherBot');
+  } catch (err) {
+    console.error(err);
+    return ctx.reply('Failed to link. Make sure the bot is an ADMIN in the channel.');
   }
-})
+});
+
 
 childBot.command('sudokillme', async (ctx) => {
   await ctx.reply('shutting down....')
