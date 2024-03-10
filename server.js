@@ -28,7 +28,7 @@ const logger = require('./middlewares/logger')
 const mongoURI = "mongodb+srv://thevixyz:admin@MachiX.thsc7w6.mongodb.net/";
 const apiID = 29033643;
 const apiHash = "a8cc5f16eddd5e0083b2534ecd31123c";
-const fatherToken = "6838759820:AAFY4EB3NXVhrtpKHpttld1N0Reh7FGcppU";
+const fatherToken = '6100496905:AAENz4rJzlmD8dPw_sZS1rSymgUAXe_hO9w'; //"6838759820:AAFY4EB3NXVhrtpKHpttld1N0Reh7FGcppU"
 let fatherBot = new Client(new StorageLocalStorage('father'), apiID, apiHash);
 father();
 function father() {

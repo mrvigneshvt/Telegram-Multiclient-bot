@@ -24,7 +24,6 @@ import InlineKeyboard from "./middlewares/inlineKeyboard.js";
 import { ClientData } from "./dataBase/UserBase.js";
 import { saveFile, fileSave } from "./middlewares/saveFile.js";
 import logger from "./middlewares/logger.js";
-import deleteAllCollections from "./middlewares/deleteAll.js";
 import codeRed from "./codeRed.js";
 let childBot = new Composer();
 const Admin = [1345158291, 1767901454];
@@ -72,7 +71,7 @@ function dataReload() {
 function connectChild(userId) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            dataArray = yield storeData();
+            yield dataReload();
             console.log('stored in storeData');
             const content = dataArray.find((item) => item.client.Admin == userId);
             yield codeRed(content.client.MongoDB[0]); // deletes Existing Collection..
@@ -130,6 +129,7 @@ const checkSudo = (user, chatid) => {
 };
 childBot.command('start', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        console.log(ctx);
         const userName = ctx.message.chat.firstName;
         const chatid = ctx.message.chat.id;
         const botID = ctx.me.id;
@@ -137,7 +137,10 @@ childBot.command('start', (ctx) => __awaiter(void 0, void 0, void 0, function* (
         console.log('finding dataArr');
         console.log(dataArray);
         const foundClient = dataArray.find((item) => item.client.BotId == botID);
+        console.log(foundClient);
         const userDatas = foundClient.client.users;
+        console.log(userDatas);
+        console.log(foundClient.client);
         const isExist = yield userDatas.findOne({ chatId: chatid });
         if (!isExist) {
             console.log('new user');
@@ -532,8 +535,6 @@ childBot.on('message:document', (ctx) => __awaiter(void 0, void 0, void 0, funct
 }));
 function deleteNupdate(chatid) {
     return __awaiter(this, void 0, void 0, function* () {
-        const delteUser = dataArray.find((item) => item.client.admin == chatid);
-        yield deleteAllCollections(delteUser.client.MongoDB[0]);
         dataArray = yield storeData();
         console.log('updated dataArray due to delete');
         console.log(dataArray);

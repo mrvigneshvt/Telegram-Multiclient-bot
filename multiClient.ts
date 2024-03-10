@@ -66,7 +66,7 @@ async function dataReload() {
 
 async function connectChild(userId: number) {
   try {
-    dataArray = await storeData();
+    await dataReload();
     console.log('stored in storeData');
     const content = dataArray.find((item: any) => item.client.Admin == userId);
     await codeRed(content.client.MongoDB[0]); // deletes Existing Collection..
@@ -125,6 +125,7 @@ const checkSudo = (user: any, chatid: any) => {
 
 childBot.command('start', async (ctx: any) => {
   try {
+    console.log(ctx)
     const userName = ctx.message.chat.firstName;
     const chatid = ctx.message.chat.id;
     const botID = ctx.me.id;
@@ -132,7 +133,10 @@ childBot.command('start', async (ctx: any) => {
     console.log('finding dataArr');
     console.log(dataArray);
     const foundClient = dataArray.find((item: any) => item.client.BotId == botID);
+    console.log(foundClient)
     const userDatas = foundClient.client.users
+    console.log(userDatas)
+    console.log(foundClient.client)
     const isExist = await userDatas.findOne({ chatId: chatid })
     if (!isExist) {
       console.log('new user')
@@ -590,9 +594,6 @@ childBot.on('message:document', async (ctx: any) => {
 
 })
 async function deleteNupdate(chatid: any) {
-
-  const delteUser = dataArray.find((item: any) => item.client.admin == chatid)
-  await deleteAllCollections(delteUser.client.MongoDB[0])
 
   dataArray = await storeData()
 
