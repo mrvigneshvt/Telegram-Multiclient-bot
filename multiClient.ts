@@ -480,6 +480,9 @@ async function iterMessage(total: any, FileArr: any, done: any, ctx: any, idChan
           //console.log(data.document.fileName, indexBtn)
           const saveDB = await saveFile(data.document, data.caption, indexBtn, done, skip)
         }
+        else if (data.video && data.video.fileId) {
+          const saveDB = await saveFile(data.video, data.caption, indexBtn, done, skip)
+        }
         else {
           console.log('Invalid File.. from getMessages')
         }

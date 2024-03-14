@@ -431,6 +431,9 @@ function iterMessage(total, FileArr, done, ctx, idChannel, startFrom, chatid, mo
                             //console.log(data.document.fileName, indexBtn)
                             const saveDB = yield saveFile(data.document, data.caption, indexBtn, done, skip);
                         }
+                        else if (data.video && data.video.fileId) {
+                            const saveDB = yield saveFile(data.video, data.caption, indexBtn, done, skip);
+                        }
                         else {
                             console.log('Invalid File.. from getMessages');
                         }
