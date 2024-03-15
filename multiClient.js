@@ -335,37 +335,37 @@ childBot.on('inlineQuery', (ctx) => __awaiter(void 0, void 0, void 0, function* 
                 console.log('comes here');
                 const datas = yield ctx.client.getChatMember(found.client.ForceSub, parseInt(userID));
                 console.log(datas);
-                let searchFile = yield found.client.indexBtn[number].find({ fileName: { $regex: filename, $options: 'i' } }).sort({ _id: -1 }).skip(offset).limit(10); // Use offset to paginate results
-                console.log(searchFile);
-                if (searchFile.length > 0 && datas.status) {
-                    const results = searchFile.map((file, index) => ({
-                        id: crypto.randomUUID(),
-                        type: "document",
-                        documentFileId: file.fileId,
-                        title: file.fileName,
-                        description: `Size : ${Math.floor(file.fileSize / (1024 * 1024))} MB\nType: ${file.mimeType}`,
-                        caption: file.caption,
-                        replyMarkup: {
-                            inlineKeyboard: [[{ text: "Search Again", switchInlineQueryCurrentChat: query }]]
-                        }
-                    }));
-                    yield ctx.answerInlineQuery(results, {
-                        cacheTime: 0, button: {
-                            text: " 📂 Results: Swipe Up ⬆️", startParameter: "start"
-                        }, nextOffset: (offset + 10).toString()
-                    }); // Update nextOffset to paginate
-                } /*else if (searchFile.length == 0 && datas.status) {
-                  await ctx.answerInlineQuery([{
-                    type: "article",
-                    id: crypto.randomUUID(),
-                    title: "No File Found",
-                    description: '\nNo Data',
-                    inputMessageContent: {
-                      messageText: "No results found in database.\n\nCheck the spelling of the file.\n\nOr the file hasn't been uploaded to the database."
-                    }
-                  }], { cacheTime: 0 });
-                }*/
             }
+            let searchFile = yield found.client.indexBtn[number].find({ fileName: { $regex: filename, $options: 'i' } }).sort({ _id: -1 }).skip(offset).limit(10); // Use offset to paginate results
+            console.log(searchFile);
+            if (searchFile.length > 0) {
+                const results = searchFile.map((file, index) => ({
+                    id: crypto.randomUUID(),
+                    type: "document",
+                    documentFileId: file.fileId,
+                    title: file.fileName,
+                    description: `Size : ${Math.floor(file.fileSize / (1024 * 1024))} MB\nType: ${file.mimeType}`,
+                    caption: file.caption,
+                    replyMarkup: {
+                        inlineKeyboard: [[{ text: "Search Again", switchInlineQueryCurrentChat: query }]]
+                    }
+                }));
+                yield ctx.answerInlineQuery(results, {
+                    cacheTime: 0, button: {
+                        text: " 📂 Results: Swipe Up ⬆️", startParameter: "start"
+                    }, nextOffset: (offset + 10).toString()
+                }); // Update nextOffset to paginate
+            } /*else if (searchFile.length == 0 && datas.status) {
+                await ctx.answerInlineQuery([{
+                  type: "article",
+                  id: crypto.randomUUID(),
+                  title: "No File Found",
+                  description: '\nNo Data',
+                  inputMessageContent: {
+                    messageText: "No results found in database.\n\nCheck the spelling of the file.\n\nOr the file hasn't been uploaded to the database."
+                  }
+                }], { cacheTime: 0 });
+              }*/
         }
         else {
             yield ctx.answerInlineQuery([{

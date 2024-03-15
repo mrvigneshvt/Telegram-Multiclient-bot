@@ -372,33 +372,33 @@ childBot.on('inlineQuery', async (ctx: any) => {
         console.log('comes here')
         const datas = await ctx.client.getChatMember(found.client.ForceSub, parseInt(userID));
         console.log(datas)
+      }
+      let searchFile = await found.client.indexBtn[number].find({ fileName: { $regex: filename, $options: 'i' } }).sort({ _id: -1 }).skip(offset).limit(10); // Use offset to paginate results
 
-        let searchFile = await found.client.indexBtn[number].find({ fileName: { $regex: filename, $options: 'i' } }).sort({ _id: -1 }).skip(offset).limit(10); // Use offset to paginate results
-
-        console.log(searchFile)
-        if (searchFile.length > 0 && datas.status) {
-
-
-          const results = searchFile.map((file: any, index: any) => ({
-            id: crypto.randomUUID(),
-            type: "document",
-            documentFileId: file.fileId,
-            title: file.fileName,
-            description: `Size : ${Math.floor(file.fileSize / (1024 * 1024))} MB\nType: ${file.mimeType}`,
-            caption: file.caption,
-            replyMarkup: {
-              inlineKeyboard: [[{ text: "Search Again", switchInlineQueryCurrentChat: query }]]
-            }
-          }));
+      console.log(searchFile)
+      if (searchFile.length > 0) {
 
 
+        const results = searchFile.map((file: any, index: any) => ({
+          id: crypto.randomUUID(),
+          type: "document",
+          documentFileId: file.fileId,
+          title: file.fileName,
+          description: `Size : ${Math.floor(file.fileSize / (1024 * 1024))} MB\nType: ${file.mimeType}`,
+          caption: file.caption,
+          replyMarkup: {
+            inlineKeyboard: [[{ text: "Search Again", switchInlineQueryCurrentChat: query }]]
+          }
+        }));
 
-          await ctx.answerInlineQuery(results, {
-            cacheTime: 0, button: {
-              text: " 📂 Results: Swipe Up ⬆️", startParameter: "start"
-            }, nextOffset: (offset + 10).toString()
-          }); // Update nextOffset to paginate
-        } /*else if (searchFile.length == 0 && datas.status) {
+
+
+        await ctx.answerInlineQuery(results, {
+          cacheTime: 0, button: {
+            text: " 📂 Results: Swipe Up ⬆️", startParameter: "start"
+          }, nextOffset: (offset + 10).toString()
+        }); // Update nextOffset to paginate
+      } /*else if (searchFile.length == 0 && datas.status) {
           await ctx.answerInlineQuery([{
             type: "article",
             id: crypto.randomUUID(),
@@ -409,7 +409,7 @@ childBot.on('inlineQuery', async (ctx: any) => {
             }
           }], { cacheTime: 0 });
         }*/
-      }
+
 
     } else {
       await ctx.answerInlineQuery([{
