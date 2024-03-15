@@ -34,6 +34,16 @@ const userData = new mongoose.Schema({
         default: 0,
         type: Number,
     },
+    forceSub: {
+        type: String,
+    },
+    channelLink: {
+        type: String,
+    },
+    forceSubActive: {
+        type: Boolean,
+        default: false,
+    },
     isVerified: {
         default: false,
         type: Boolean,

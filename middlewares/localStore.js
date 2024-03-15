@@ -20,7 +20,10 @@ function storeData() {
                 Buttons: item.Buttons,
                 MongoDB: item.MongoDB,
                 Channels: item.Channels,
-                Thumbnail: item.thumbnail
+                Thumbnail: item.thumbnail,
+                ChannelLink: item.channelLink,
+                ForceSubActive: item.forceSubActive,
+                ForceSub: item.forceSub
             }
         }));
         return mapped;

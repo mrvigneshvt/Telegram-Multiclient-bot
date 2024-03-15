@@ -319,47 +319,52 @@ childBot.command('unLink', (ctx) => __awaiter(void 0, void 0, void 0, function* 
     yield ctx.reply('Done.. Unlinked from All Channels');
 }));
 childBot.on('inlineQuery', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    //console.log(ctx)
+    //const botName = ctx.me.username
+    const botID = ctx.me.id;
+    const userID = ctx.from.id;
+    //const inlineID = ctx.inlineQuery.id;
+    const found = dataArray.find((item) => item.client.BotId == botID);
     try {
-        console.log(ctx);
-        const botName = ctx.me.username;
-        const botID = ctx.me.id;
-        //const inlineID = ctx.inlineQuery.id;
-        const found = dataArray.find((item) => item.client.BotId == botID);
         const offset = parseInt(ctx.inlineQuery.offset) || 0; // Parse offset to integer
         let query = ctx.inlineQuery.query;
         let number = parseInt(query[0]); // Parse number to integer
         let filename = query.slice(1).trim(); // Remove number from the query and trim whitespace .find().sort({_id: -1}).limit(10);
         if (number <= found.client.Buttons.length - 1) {
-            let searchFile = yield found.client.indexBtn[number].find({ fileName: { $regex: filename, $options: 'i' } }).sort({ _id: -1 }).skip(offset).limit(10); // Use offset to paginate results
-            console.log(searchFile);
-            if (searchFile.length > 0) {
-                const results = searchFile.map((file, index) => ({
-                    id: crypto.randomUUID(),
-                    type: "document",
-                    documentFileId: file.fileId,
-                    title: file.fileName,
-                    description: `Size : ${Math.floor(file.fileSize / (1024 * 1024))} MB\nType: ${file.mimeType}`,
-                    caption: file.caption,
-                    replyMarkup: {
-                        inlineKeyboard: [[{ text: "Search Again", switchInlineQueryCurrentChat: query }]]
-                    }
-                }));
-                yield ctx.answerInlineQuery(results, {
-                    cacheTime: 0, button: {
-                        text: " 📂 Results: Swipe Up ⬆️", startParameter: "start"
-                    }, nextOffset: (offset + 10).toString()
-                }); // Update nextOffset to paginate
-            }
-            else {
-                yield ctx.answerInlineQuery([{
-                        type: "article",
+            if (found.client.ForceSubActive && found.client.ChannelLink) {
+                console.log('comes here');
+                const datas = yield ctx.client.getChatMember(found.client.ForceSub, parseInt(userID));
+                console.log(datas);
+                let searchFile = yield found.client.indexBtn[number].find({ fileName: { $regex: filename, $options: 'i' } }).sort({ _id: -1 }).skip(offset).limit(10); // Use offset to paginate results
+                console.log(searchFile);
+                if (searchFile.length > 0 && datas.status) {
+                    const results = searchFile.map((file, index) => ({
                         id: crypto.randomUUID(),
-                        title: "No File Found",
-                        description: '\nNo Data',
-                        inputMessageContent: {
-                            messageText: "No results found in database.\n\nCheck the spelling of the file.\n\nOr the file hasn't been uploaded to the database."
+                        type: "document",
+                        documentFileId: file.fileId,
+                        title: file.fileName,
+                        description: `Size : ${Math.floor(file.fileSize / (1024 * 1024))} MB\nType: ${file.mimeType}`,
+                        caption: file.caption,
+                        replyMarkup: {
+                            inlineKeyboard: [[{ text: "Search Again", switchInlineQueryCurrentChat: query }]]
                         }
-                    }], { cacheTime: 0 });
+                    }));
+                    yield ctx.answerInlineQuery(results, {
+                        cacheTime: 0, button: {
+                            text: " 📂 Results: Swipe Up ⬆️", startParameter: "start"
+                        }, nextOffset: (offset + 10).toString()
+                    }); // Update nextOffset to paginate
+                } /*else if (searchFile.length == 0 && datas.status) {
+                  await ctx.answerInlineQuery([{
+                    type: "article",
+                    id: crypto.randomUUID(),
+                    title: "No File Found",
+                    description: '\nNo Data',
+                    inputMessageContent: {
+                      messageText: "No results found in database.\n\nCheck the spelling of the file.\n\nOr the file hasn't been uploaded to the database."
+                    }
+                  }], { cacheTime: 0 });
+                }*/
             }
         }
         else {
@@ -374,10 +379,77 @@ childBot.on('inlineQuery', (ctx) => __awaiter(void 0, void 0, void 0, function* 
                 }], { cacheTime: 0 });
         }
     }
-    catch (err) {
-        console.error(err);
-        logger('inLine', err);
+    catch (error) {
+        if (error.error_message == 'USER_NOT_PARTICIPANT' || error.error_message == 'PARTICIPANT_ID_INVALID') {
+            console.log('non particiapnt');
+            yield ctx.answerInlineQuery([{
+                    type: "article",
+                    id: crypto.randomUUID(),
+                    title: "Join My Channel to Use Me..:)",
+                    description: 'Join My Updates Channel to get Updates From Me',
+                    inputMessageContent: {
+                        messageText: "Join My Channel to Use me free"
+                    },
+                    replyMarkup: {
+                        inlineKeyboard: [[{ text: "Join ", url: found.client.ChannelLink }]]
+                    }
+                }], { cacheTime: 0 });
+        } /*else if (error.error_message == 'CHANNEL_PRIVATE') {
+          await ctx.answerInlineQuery([{
+            type: "article",
+            id: crypto.randomUUID(),
+            title: "Add Bot as Admin to Force SUB..",
+            description: 'Bot has No Acess',
+            inputMessageContent: {
+              messageText: "Bot has No Access to the CHANNEL for FORCE SUB.."
+            },
+            replyMarkup: {
+              inlineKeyboard: [[{ text: "Join ", url: found.client.ChannelLink }]]
+            }
+          }], { cacheTime: 0 });
+        }*/
+        console.error(error);
+        yield logger('inLine', error);
         console.log('error in Inline');
+    }
+}));
+childBot.command('forcesub', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!ctx.message.replyToMessage) {
+            return ctx.reply('Forward a Post from a Channel \n\nReply with /forcesub');
+        }
+        else if (ctx.message && ctx.message.replyToMessage && ctx.message.replyToMessage.forwardFromChat) {
+            console.log(ctx.message.replyToMessage.forwardFromChat);
+            const channelID = ctx.message.replyToMessage.forwardFromChat.id;
+            const botID = ctx.me.id;
+            const ChannelLink = yield ctx.client.createInviteLink(channelID);
+            if (ChannelLink) {
+                const datas = yield ClientData.findOneAndUpdate({ BotId: botID }, {
+                    $set: {
+                        forceSub: channelID,
+                        forceSubActive: true,
+                        channelLink: ChannelLink.inviteLink
+                    }
+                }, { new: true });
+                if (datas) {
+                    yield dataReload();
+                    yield ctx.reply('Force Sub Added Succesfully..');
+                }
+                else {
+                    yield ctx.reply('Contact Admin');
+                }
+            }
+        }
+        else {
+            yield ctx.reply('add bot as admin with createInviteLink');
+        }
+    }
+    catch (error) {
+        console.log(error);
+        yield logger('inForceSub', error);
+        if (error.error_message == 'CHANNEL_PRIVATE') {
+            yield ctx.reply('Add Bot as Admin\n\nwith All Rights enabled..');
+        }
     }
 }));
 childBot.command('admin', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
@@ -495,7 +567,7 @@ childBot.command('link', (ctx) => __awaiter(void 0, void 0, void 0, function* ()
         if (!updatedClientData) {
             return ctx.reply('Bot data not found.');
         }
-        updatedClientData.Channels.set(number, ChannelId);
+        yield updatedClientData.Channels.set(number, ChannelId);
         yield updatedClientData.save();
         yield dataReload();
         return ctx.reply('Updated, check /myInfo in fatherBot');
