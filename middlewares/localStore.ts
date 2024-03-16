@@ -17,7 +17,8 @@ async function storeData(): Promise<childData[]> {
             Thumbnail: item.thumbnail,
             ChannelLink: item.channelLink,
             ForceSubActive: item.forceSubActive,
-            ForceSub: item.forceSub
+            ForceSub: item.forceSub,
+            CustomCaption: item.customCaption,
         }
     }))
 

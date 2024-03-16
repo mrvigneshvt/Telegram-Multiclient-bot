@@ -241,6 +241,34 @@ childBot.command('thumb', async (ctx: any) => {
   }
 })
 
+childBot.command('caption', async (ctx: any) => {
+  const text = ctx.message.text
+  const botID = ctx.me.id
+
+  if (text == '/caption') {
+    return ctx.reply('Send in this Format\n\n /caption YourCaptionHere')
+  }
+
+  const caption = text.replace('/caption ', '')
+  console.log(caption)
+
+  const reWrite = await ClientData.findOneAndUpdate({ BotId: botID }, {
+    $set: {
+      customCaption: caption
+    }
+  }, { new: true })
+
+  if (reWrite) {
+    await dataReload()
+    return ctx.reply(`Caption Saved...\n\n ${caption}`)
+  }
+  else {
+    return ctx.reply('some error contact Admin')
+  }
+
+
+})
+
 childBot.command('showThumb', async (ctx: any) => {
   try {
     const text = ctx.message.text
@@ -378,18 +406,25 @@ childBot.on('inlineQuery', async (ctx: any) => {
       console.log(searchFile)
       if (searchFile.length > 0) {
 
+        // const caption = found.client.customCaption : `${file.caption}\n${found.client.CustomCaption}` ? fileSave.caption
 
-        const results = searchFile.map((file: any, index: any) => ({
-          id: crypto.randomUUID(),
-          type: "document",
-          documentFileId: file.fileId,
-          title: file.fileName,
-          description: `Size : ${Math.floor(file.fileSize / (1024 * 1024))} MB\nType: ${file.mimeType}`,
-          caption: file.caption,
-          replyMarkup: {
-            inlineKeyboard: [[{ text: "Search Again", switchInlineQueryCurrentChat: query }]]
-          }
-        }));
+        const results = searchFile.map((file: any, index: any) => {
+          const Caption = found.client.CustomCaption ? `${file.caption}\n${found.client.CustomCaption}` : file.caption;
+
+          return {
+            id: crypto.randomUUID(),
+            caption: Caption,
+            type: "document",
+            documentFileId: file.fileId,
+            title: file.fileName,
+            description: `Size : ${Math.floor(file.fileSize / (1024 * 1024))} MB\nType: ${file.mimeType}`,
+            replyMarkup: {
+              inlineKeyboard: [[{ text: "Search Again", switchInlineQueryCurrentChat: query }]]
+            }
+          };
+        });
+
+
 
 
 

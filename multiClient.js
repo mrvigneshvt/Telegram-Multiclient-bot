@@ -233,6 +233,27 @@ childBot.command('thumb', (ctx) => __awaiter(void 0, void 0, void 0, function* (
         console.log(err);
     }
 }));
+childBot.command('caption', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    const text = ctx.message.text;
+    const botID = ctx.me.id;
+    if (text == '/caption') {
+        return ctx.reply('Send in this Format\n\n /caption YourCaptionHere');
+    }
+    const caption = text.replace('/caption ', '');
+    console.log(caption);
+    const reWrite = yield ClientData.findOneAndUpdate({ BotId: botID }, {
+        $set: {
+            customCaption: caption
+        }
+    }, { new: true });
+    if (reWrite) {
+        yield dataReload();
+        return ctx.reply(`Caption Saved...\n\n ${caption}`);
+    }
+    else {
+        return ctx.reply('some error contact Admin');
+    }
+}));
 childBot.command('showThumb', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const text = ctx.message.text;
@@ -339,17 +360,21 @@ childBot.on('inlineQuery', (ctx) => __awaiter(void 0, void 0, void 0, function* 
             let searchFile = yield found.client.indexBtn[number].find({ fileName: { $regex: filename, $options: 'i' } }).sort({ _id: -1 }).skip(offset).limit(10); // Use offset to paginate results
             console.log(searchFile);
             if (searchFile.length > 0) {
-                const results = searchFile.map((file, index) => ({
-                    id: crypto.randomUUID(),
-                    type: "document",
-                    documentFileId: file.fileId,
-                    title: file.fileName,
-                    description: `Size : ${Math.floor(file.fileSize / (1024 * 1024))} MB\nType: ${file.mimeType}`,
-                    caption: file.caption,
-                    replyMarkup: {
-                        inlineKeyboard: [[{ text: "Search Again", switchInlineQueryCurrentChat: query }]]
-                    }
-                }));
+                // const caption = found.client.customCaption : `${file.caption}\n${found.client.CustomCaption}` ? fileSave.caption
+                const results = searchFile.map((file, index) => {
+                    const Caption = found.client.CustomCaption ? `${file.caption}\n${found.client.CustomCaption}` : file.caption;
+                    return {
+                        id: crypto.randomUUID(),
+                        caption: Caption,
+                        type: "document",
+                        documentFileId: file.fileId,
+                        title: file.fileName,
+                        description: `Size : ${Math.floor(file.fileSize / (1024 * 1024))} MB\nType: ${file.mimeType}`,
+                        replyMarkup: {
+                            inlineKeyboard: [[{ text: "Search Again", switchInlineQueryCurrentChat: query }]]
+                        }
+                    };
+                });
                 yield ctx.answerInlineQuery(results, {
                     cacheTime: 0, button: {
                         text: " 📂 Results: Swipe Up ⬆️", startParameter: "start"

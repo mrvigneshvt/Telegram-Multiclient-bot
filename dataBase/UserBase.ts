@@ -44,6 +44,9 @@ const userData = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    customCaption: {
+        type: String,
+    },
     isVerified: {
         default: false,
         type: Boolean,
