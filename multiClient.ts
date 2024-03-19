@@ -504,7 +504,9 @@ childBot.command('forcesub', async (ctx: any) => {
       const channelID = ctx.message.replyToMessage.forwardFromChat.id
       const botID = ctx.me.id;
 
-      const ChannelLink = await ctx.client.createInviteLink(channelID)
+      const ChannelLink = await ctx.client.createInviteLink(channelID, {
+        requireApproval: true,
+      })
 
       if (ChannelLink) {
         const datas = await ClientData.findOneAndUpdate({ BotId: botID }, {
