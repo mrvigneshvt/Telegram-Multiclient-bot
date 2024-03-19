@@ -7,9 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { createRequire as _createRequire } from "module";
-const __require = _createRequire(import.meta.url);
-const fs = __require("fs");
+import fs from 'fs';
 const filePath = './errorLogs.txt';
 function logger(text, error) {
     return __awaiter(this, void 0, void 0, function* () {
