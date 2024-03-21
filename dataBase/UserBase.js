@@ -49,7 +49,10 @@ const userData = new mongoose.Schema({
     isVerified: {
         default: false,
         type: Boolean,
-    }
+    },
+    inlineThumb: {
+        type: String,
+    },
 });
 const ClientData = mongoose.model('fatherMachiX', userData);
 export { ClientData, userData };

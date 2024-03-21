@@ -11,7 +11,7 @@ import { ClientData } from "../dataBase/UserBase.js";
 function storeData() {
     return __awaiter(this, void 0, void 0, function* () {
         const childDatas = yield ClientData.find({ isVerified: true });
-        console.log(childDatas);
+        console.log('childdatas', childDatas);
         let mapped = childDatas.map((item) => ({
             client: {
                 Token: item.Token,
@@ -25,6 +25,7 @@ function storeData() {
                 ForceSubActive: item.forceSubActive,
                 ForceSub: item.forceSub,
                 CustomCaption: item.customCaption,
+                InlineThumb: item.inlineThumb,
             }
         }));
         return mapped;

@@ -3,7 +3,7 @@ import { childData } from "../interface/interface.js";
 
 async function storeData(): Promise<childData[]> {
     const childDatas = await ClientData.find({ isVerified: true })
-    console.log(childDatas)
+    console.log('childdatas', childDatas)
 
 
     let mapped: any[] = childDatas.map((item) => ({
@@ -19,6 +19,7 @@ async function storeData(): Promise<childData[]> {
             ForceSubActive: item.forceSubActive,
             ForceSub: item.forceSub,
             CustomCaption: item.customCaption,
+            InlineThumb: item.inlineThumb,
         }
     }))
 

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 // Connection URI
-const uri = "mongodb+srv://sodha123:sodha123@cluster0.ncclx8i.mongodb.net/?retryWrites=true&w=majority";
+const uri = "mongodb+srv://Admin:Admin@cluster0.qf1qi6y.mongodb.net/"//"mongodb+srv://sodha123:sodha123@cluster0.ncclx8i.mongodb.net/?retryWrites=true&w=majority";
 
 //codeRed(uri)
 async function codeRed(uri: string) {
@@ -36,5 +36,7 @@ async function codeRed(uri: string) {
         console.error('Error connecting to MongoDB:', error);
     }
 }
+
+//codeRed(uri)
 
 export default codeRed;

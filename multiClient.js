@@ -34,10 +34,12 @@ function multi() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             dataArray = yield storeData();
-            for (let i = 0; i < dataArray.length; i++) {
-                yield childGenerator(i, dataArray, childBot);
-                console.log(chalk.magentaBright('Initialized 100%..'));
-                console.log(dataArray);
+            if (dataArray.length > 0) {
+                for (let i = 0; i < dataArray.length; i++) {
+                    yield childGenerator(i, dataArray, childBot);
+                    console.log(chalk.magentaBright('Initialized 100%..'));
+                    console.log(dataArray);
+                }
             }
         }
         catch (err) {
@@ -100,19 +102,34 @@ function childGenerator(i, dataArray, childBot) {
         try {
             console.log(chalk.yellowBright(`Trying to Connect ${i} child`));
             const connection = mongoose.createConnection(dataArray[i].client.MongoDB[0]);
-            let indexArr = [];
-            for (let j = 0; j < 4; j++) {
-                const btnModel = connection.model(`${j} buttons`, schemaFile);
-                indexArr.push(btnModel);
+            try {
+                let indexArr = [];
+                dataArray[i].client.indexBtn = indexArr;
+                const userModel = connection.model('users', userSchema);
+                dataArray[i].client.users = userModel;
+                const client = new Client(new StorageLocalStorage(String(`Client${i}`)), apiID, apiHash);
+                yield client.start(dataArray[i].client.Token);
+                console.log(chalk.cyanBright(`Connected to ${i} Child Clients`));
+                client.use(childBot);
+                console.log(dataArray);
+                for (let j = 0; j < 4; j++) {
+                    const btnModel = connection.model(`${j} buttons`, schemaFile);
+                    indexArr.push(btnModel);
+                }
             }
-            dataArray[i].client.indexBtn = indexArr;
-            const userModel = connection.model('users', userSchema);
-            dataArray[i].client.users = userModel;
-            const client = new Client(new StorageLocalStorage(String(`Client${i}`)), apiID, apiHash);
-            yield client.start(dataArray[i].client.Token);
-            console.log(chalk.cyanBright(`Connected to ${i} Child Clients`));
-            client.use(childBot);
-            console.log(dataArray);
+            catch (err) {
+                /*if (err.error_message == 'SESSION_REVOKED') { }
+          
+                const deleted = await ClientData.findOneAndDelete({ BotId: dataArray[i].client.BotId })
+          
+                console.log(deleted)
+          
+                const popped = delete dataArray[i]
+          
+                console.log('token UnAuth... Removing From DB...')
+                console.log(popped)*/
+                console.log(err);
+            }
         }
         catch (err) {
             logger('Multi child', err);
@@ -199,10 +216,10 @@ childBot.command('info', (ctx) => __awaiter(void 0, void 0, void 0, function* ()
 childBot.command('thumb', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const text = ctx.message.text;
-        const chatid = ctx.message.chat.id;
         const botID = ctx.me.id;
         if (ctx.message && ctx.message.replyToMessage && ctx.message.replyToMessage.photo && ctx.message.replyToMessage.photo.fileId) {
             const find = yield ClientData.findOne({ BotId: botID });
+            const chatid = ctx.message.chat.id;
             if (!find || !checkSudo(find.Admin, chatid)) {
                 return;
             }
@@ -236,6 +253,11 @@ childBot.command('thumb', (ctx) => __awaiter(void 0, void 0, void 0, function* (
 childBot.command('caption', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     const text = ctx.message.text;
     const botID = ctx.me.id;
+    const find = yield ClientData.findOne({ BotId: botID });
+    const chatid = ctx.message.chat.id;
+    if (!find || !checkSudo(find.Admin, chatid)) {
+        return;
+    }
     if (text == '/caption') {
         return ctx.reply('Send in this Format\n\n /caption YourCaptionHere');
     }
@@ -259,6 +281,10 @@ childBot.command('showThumb', (ctx) => __awaiter(void 0, void 0, void 0, functio
         const text = ctx.message.text;
         const chatid = ctx.message.chat.id;
         const botID = ctx.me.id;
+        const Find = yield ClientData.findOne({ BotId: botID });
+        if (!Find || !checkSudo(Find.Admin, chatid)) {
+            return;
+        }
         const find = dataArray.find((item) => item.client.BotId == botID);
         console.log(dataArray);
         return ctx.replyPhoto(find.client.Thumbnail);
@@ -330,6 +356,9 @@ childBot.command('unLink', (ctx) => __awaiter(void 0, void 0, void 0, function* 
     const chatid = ctx.message.chat.id;
     const botID = ctx.me.id;
     const data = dataArray.find((item) => item.client.Admin == chatid);
+    if (!checkSudo(data.client.Admin, chatid)) {
+        return;
+    }
     const update = yield ClientData.findOneAndUpdate({ BotId: botID }, {
         $set: {
             Channels: [0, 0, 0, 0]
@@ -410,16 +439,18 @@ childBot.on('inlineQuery', (ctx) => __awaiter(void 0, void 0, void 0, function* 
             yield ctx.answerInlineQuery([{
                     type: "article",
                     id: crypto.randomUUID(),
-                    title: "Join My Channel to Use Me..:)",
+                    title: "🔓Join My Channel to Use Me..:)",
                     description: 'Join My Updates Channel to get Updates From Me',
                     inputMessageContent: {
                         messageText: "Join My Channel to Use me free"
                     },
+                    thumbnailUrl: "https://avatars.githubusercontent.com/u/131755910?s=200&v=4&ext=.jpg",
                     replyMarkup: {
                         inlineKeyboard: [[{ text: "Join ", url: found.client.ChannelLink }]]
                     }
                 }], { cacheTime: 0 });
-        } /*else if (error.error_message == 'CHANNEL_PRIVATE') {
+        }
+        /*else if (error.error_message == 'CHANNEL_PRIVATE') {
           await ctx.answerInlineQuery([{
             type: "article",
             id: crypto.randomUUID(),
@@ -439,7 +470,13 @@ childBot.on('inlineQuery', (ctx) => __awaiter(void 0, void 0, void 0, function* 
     }
 }));
 childBot.command('forcesub', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    const botID = ctx.me.id;
     try {
+        const find = yield ClientData.findOne({ BotId: botID });
+        const chatid = ctx.message.chat.id;
+        /*if (!find || !checkSudo(find.Admin, chatid)) {
+          return
+        }*/
         if (!ctx.message.replyToMessage) {
             return ctx.reply('Forward a Post from a Channel \n\nReply with /forcesub');
         }
@@ -447,23 +484,45 @@ childBot.command('forcesub', (ctx) => __awaiter(void 0, void 0, void 0, function
             console.log(ctx.message.replyToMessage.forwardFromChat);
             const channelID = ctx.message.replyToMessage.forwardFromChat.id;
             const botID = ctx.me.id;
+            let isThumb;
+            const chatDetails = yield ctx.client.getChat(channelID);
+            console.log(`Chat details:`, chatDetails);
+            //await ctx.replyPhoto(chatDetails.photo.bigFileId)
             const ChannelLink = yield ctx.client.createInviteLink(channelID, {
                 requireApproval: true,
             });
             if (ChannelLink) {
-                const datas = yield ClientData.findOneAndUpdate({ BotId: botID }, {
-                    $set: {
-                        forceSub: channelID,
-                        forceSubActive: true,
-                        channelLink: ChannelLink.inviteLink
+                if (isThumb) {
+                    const datas = yield ClientData.findOneAndUpdate({ BotId: botID }, {
+                        $set: {
+                            forceSub: channelID,
+                            forceSubActive: true,
+                            channelLink: ChannelLink.inviteLink,
+                        }
+                    }, { new: true });
+                    if (datas) {
+                        yield dataReload();
+                        yield ctx.reply('Force Sub Added Succesfully..');
                     }
-                }, { new: true });
-                if (datas) {
-                    yield dataReload();
-                    yield ctx.reply('Force Sub Added Succesfully..');
+                    else {
+                        yield ctx.reply('Contact Admin');
+                    }
                 }
                 else {
-                    yield ctx.reply('Contact Admin');
+                    const datas = yield ClientData.findOneAndUpdate({ BotId: botID }, {
+                        $set: {
+                            forceSub: channelID,
+                            forceSubActive: true,
+                            channelLink: ChannelLink.inviteLink
+                        }
+                    }, { new: true });
+                    if (datas) {
+                        yield dataReload();
+                        yield ctx.reply('Force Sub Added Succesfully..');
+                    }
+                    else {
+                        yield ctx.reply('Contact Admin');
+                    }
                 }
             }
         }

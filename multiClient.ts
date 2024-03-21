@@ -11,6 +11,7 @@ import { saveFile, fileSave } from "./middlewares/saveFile.js";
 import logger from "./middlewares/logger.js";
 import deleteAllCollections from "./middlewares/deleteAll.js";
 import codeRed from "./codeRed.js";
+import fs from 'fs'
 
 let childBot = new Composer()
 const Admin = [1345158291, 1767901454]
@@ -24,11 +25,14 @@ let dataArray: any = []
 async function multi() {
   try {
     dataArray = await storeData();
-    for (let i = 0; i < dataArray.length; i++) {
-      await childGenerator(i, dataArray, childBot);
-      console.log(chalk.magentaBright('Initialized 100%..'));
-      console.log(dataArray);
+    if (dataArray.length > 0) {
+      for (let i = 0; i < dataArray.length; i++) {
+        await childGenerator(i, dataArray, childBot);
+        console.log(chalk.magentaBright('Initialized 100%..'));
+        console.log(dataArray);
+      }
     }
+
   } catch (err) {
     console.log(chalk.red('Error in multi function:', err));
     logger('Multi child', err)
@@ -39,6 +43,7 @@ async function dataReload() {
 
   try {
     dataArray = await storeData();
+
     dataArray.forEach((element: any) => {
       const connection = mongoose.createConnection(element.client.MongoDB[0])
       let indexArr = [];
@@ -95,20 +100,38 @@ async function childGenerator(i: number, dataArray: any, childBot: Composer<Cont
     console.log(chalk.yellowBright(`Trying to Connect ${i} child`));
     const connection = mongoose.createConnection(dataArray[i].client.MongoDB[0]);
 
-    let indexArr = [];
-    for (let j = 0; j < 4; j++) {
-      const btnModel = connection.model(`${j} buttons`, schemaFile);
-      indexArr.push(btnModel);
-    }
-    dataArray[i].client.indexBtn = indexArr;
-    const userModel = connection.model('users', userSchema);
-    dataArray[i].client.users = userModel;
-    const client = new Client(new StorageLocalStorage(String(`Client${i}`)), apiID, apiHash);
-    await client.start(dataArray[i].client.Token);
-    console.log(chalk.cyanBright(`Connected to ${i} Child Clients`));
-    client.use(childBot);
+    try {
+      let indexArr: any = [];
 
-    console.log(dataArray);
+      dataArray[i].client.indexBtn = indexArr;
+      const userModel = connection.model('users', userSchema);
+      dataArray[i].client.users = userModel;
+      const client = new Client(new StorageLocalStorage(String(`Client${i}`)), apiID, apiHash);
+      await client.start(dataArray[i].client.Token);
+      console.log(chalk.cyanBright(`Connected to ${i} Child Clients`));
+      client.use(childBot);
+
+      console.log(dataArray);
+      for (let j = 0; j < 4; j++) {
+        const btnModel = connection.model(`${j} buttons`, schemaFile);
+        indexArr.push(btnModel);
+      }
+    } catch (err: any) {
+
+      /*if (err.error_message == 'SESSION_REVOKED') { }
+
+      const deleted = await ClientData.findOneAndDelete({ BotId: dataArray[i].client.BotId })
+
+      console.log(deleted)
+
+      const popped = delete dataArray[i]
+
+      console.log('token UnAuth... Removing From DB...')
+      console.log(popped)*/
+      console.log(err)
+    }
+
+
   } catch (err) {
     logger('Multi child', err)
     console.log(chalk.red('Error in childGenerator function:', err));
@@ -199,17 +222,16 @@ childBot.command('info', async (ctx: any) => {
     await logger('in child Info', error);
     console.log(error)
   }
-
-
 })
 
 childBot.command('thumb', async (ctx: any) => {
   try {
     const text = ctx.message.text
-    const chatid = ctx.message.chat.id;
     const botID = ctx.me.id
     if (ctx.message && ctx.message.replyToMessage && ctx.message.replyToMessage.photo && ctx.message.replyToMessage.photo.fileId) {
-      const find = await ClientData.findOne({ BotId: botID })
+      const find = await ClientData.findOne({ BotId: botID });
+      const chatid = ctx.message.chat.id;
+
       if (!find || !checkSudo(find.Admin, chatid)) {
         return
       }
@@ -244,7 +266,12 @@ childBot.command('thumb', async (ctx: any) => {
 childBot.command('caption', async (ctx: any) => {
   const text = ctx.message.text
   const botID = ctx.me.id
+  const find = await ClientData.findOne({ BotId: botID });
+  const chatid = ctx.message.chat.id;
 
+  if (!find || !checkSudo(find.Admin, chatid)) {
+    return
+  }
   if (text == '/caption') {
     return ctx.reply('Send in this Format\n\n /caption YourCaptionHere')
   }
@@ -275,6 +302,11 @@ childBot.command('showThumb', async (ctx: any) => {
     const chatid = ctx.message.chat.id;
     const botID = ctx.me.id
 
+    const Find = await ClientData.findOne({ BotId: botID });
+
+    if (!Find || !checkSudo(Find.Admin, chatid)) {
+      return
+    }
     const find = dataArray.find((item: any) => item.client.BotId == botID)
 
     console.log(dataArray)
@@ -363,7 +395,13 @@ childBot.command('unLink', async (ctx: any) => {
   const chatid = ctx.message.chat.id;
   const botID = ctx.me.id
 
+
+
   const data = dataArray.find((item: any) => item.client.Admin == chatid)
+
+  if (!checkSudo(data.client.Admin, chatid)) {
+    return
+  }
 
   const update = await ClientData.findOneAndUpdate({ BotId: botID }, {
     $set: {
@@ -463,16 +501,19 @@ childBot.on('inlineQuery', async (ctx: any) => {
       await ctx.answerInlineQuery([{
         type: "article",
         id: crypto.randomUUID(),
-        title: "Join My Channel to Use Me..:)",
+        title: "🔓Join My Channel to Use Me..:)",
         description: 'Join My Updates Channel to get Updates From Me',
         inputMessageContent: {
           messageText: "Join My Channel to Use me free"
         },
+        thumbnailUrl: "https://avatars.githubusercontent.com/u/131755910?s=200&v=4&ext=.jpg",
         replyMarkup: {
           inlineKeyboard: [[{ text: "Join ", url: found.client.ChannelLink }]]
         }
       }], { cacheTime: 0 });
-    } /*else if (error.error_message == 'CHANNEL_PRIVATE') {
+    }
+
+    /*else if (error.error_message == 'CHANNEL_PRIVATE') {
       await ctx.answerInlineQuery([{
         type: "article",
         id: crypto.randomUUID(),
@@ -493,8 +534,15 @@ childBot.on('inlineQuery', async (ctx: any) => {
 });
 
 childBot.command('forcesub', async (ctx: any) => {
+  const botID = ctx.me.id
 
   try {
+    const find = await ClientData.findOne({ BotId: botID });
+    const chatid = ctx.message.chat.id;
+
+    /*if (!find || !checkSudo(find.Admin, chatid)) {
+      return
+    }*/
     if (!ctx.message.replyToMessage) {
       return ctx.reply('Forward a Post from a Channel \n\nReply with /forcesub')
     }
@@ -503,27 +551,54 @@ childBot.command('forcesub', async (ctx: any) => {
       console.log(ctx.message.replyToMessage.forwardFromChat)
       const channelID = ctx.message.replyToMessage.forwardFromChat.id
       const botID = ctx.me.id;
+      let isThumb;
 
+      const chatDetails = await ctx.client.getChat(channelID)
+
+      console.log(`Chat details:`, chatDetails)
+
+      //await ctx.replyPhoto(chatDetails.photo.bigFileId)
       const ChannelLink = await ctx.client.createInviteLink(channelID, {
         requireApproval: true,
       })
 
       if (ChannelLink) {
-        const datas = await ClientData.findOneAndUpdate({ BotId: botID }, {
-          $set: {
-            forceSub: channelID,
-            forceSubActive: true,
-            channelLink: ChannelLink.inviteLink
+
+        if (isThumb) {
+          const datas = await ClientData.findOneAndUpdate({ BotId: botID }, {
+            $set: {
+              forceSub: channelID,
+              forceSubActive: true,
+              channelLink: ChannelLink.inviteLink,
+            }
+          }, { new: true })
+          if (datas) {
+            await dataReload()
+            await ctx.reply('Force Sub Added Succesfully..');
+
+          } else {
+            await ctx.reply('Contact Admin')
+
           }
-        }, { new: true })
-
-        if (datas) {
-          await dataReload()
-          await ctx.reply('Force Sub Added Succesfully..')
         } else {
-          await ctx.reply('Contact Admin')
+          const datas = await ClientData.findOneAndUpdate({ BotId: botID }, {
+            $set: {
+              forceSub: channelID,
+              forceSubActive: true,
+              channelLink: ChannelLink.inviteLink
+            }
+          }, { new: true })
+          if (datas) {
+            await dataReload()
+            await ctx.reply('Force Sub Added Succesfully..')
+          } else {
+            await ctx.reply('Contact Admin')
 
+          }
         }
+
+
+
       }
     } else {
       await ctx.reply('add bot as admin with createInviteLink')
@@ -535,9 +610,6 @@ childBot.command('forcesub', async (ctx: any) => {
       await ctx.reply('Add Bot as Admin\n\nwith All Rights enabled..')
     }
   }
-
-
-
 })
 
 childBot.command('admin', async (ctx: any) => {
