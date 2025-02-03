@@ -14,9 +14,9 @@ import codeRed from "./codeRed.js";
 import fs from 'fs'
 
 let childBot = new Composer()
-const Admin = [1345158291, 1767901454]
-const apiID = 29033643
-const apiHash = "a8cc5f16eddd5e0083b2534ecd31123c"
+const Admin = [0, 0]
+const apiID = 0
+const apiHash = ""
 
 
 let dataArray: any = []

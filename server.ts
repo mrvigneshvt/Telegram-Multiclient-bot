@@ -19,7 +19,7 @@ const storeData = require("./middlewares/localStore")
 const logger = require('./middlewares/logger')
 */
 const mongoURI = ''
-const apiID: number = ''
+const apiID: number | string = ''
 const apiHash: string = ""
 const fatherToken = ""
 
