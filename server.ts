@@ -18,10 +18,10 @@ const { starter } = require("./middlewares/starter")
 const storeData = require("./middlewares/localStore")
 const logger = require('./middlewares/logger')
 */
-const mongoURI = "mongodb+srv://thevixyz:admin@MachiX.thsc7w6.mongodb.net/"
-const apiID: number = 29033643
-const apiHash: string = "a8cc5f16eddd5e0083b2534ecd31123c"
-const fatherToken = "6838759820:AAFY4EB3NXVhrtpKHpttld1N0Reh7FGcppU" //'6100496905:AAENz4rJzlmD8dPw_sZS1rSymgUAXe_hO9w'// (approverX)
+const mongoURI = ''
+const apiID: number = ''
+const apiHash: string = ""
+const fatherToken = ""
 
 let fatherBot = new Client(new StorageLocalStorage('father'), apiID, apiHash)
 
